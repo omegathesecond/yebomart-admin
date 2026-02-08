@@ -48,7 +48,17 @@ export default function Shops() {
       const { data } = await adminApi.getShops({ page, limit: ITEMS_PER_PAGE, search });
       
       if (data) {
-        setShops(data.shops);
+        // Map API fields to expected format
+        const mappedShops = data.shops.map((shop: any) => ({
+          id: shop.id,
+          name: shop.name,
+          ownerName: shop.ownerName,
+          phone: shop.ownerPhone || shop.phone,
+          tier: shop.tier || 'FREE',
+          status: shop.status || 'active',
+          createdAt: shop.createdAt,
+        }));
+        setShops(mappedShops);
         setTotal(data.total);
       } else {
         // Use mock data
