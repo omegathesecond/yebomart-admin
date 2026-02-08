@@ -29,8 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // In a real app, you'd validate the token with the server
       // For now, we'll just check if it exists
       const savedUser = localStorage.getItem('yebomart_admin_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+      if (savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
+        try {
+          setUser(JSON.parse(savedUser));
+        } catch {
+          // Invalid JSON, clear it
+          localStorage.removeItem('yebomart_admin_user');
+        }
       }
     }
     setIsLoading(false);
@@ -41,13 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       return { success: false, error };
     }
-    if (data) {
+    if (data?.token && data?.user) {
       adminApi.setToken(data.token);
       setUser(data.user);
       localStorage.setItem('yebomart_admin_user', JSON.stringify(data.user));
       return { success: true };
     }
-    return { success: false, error: 'Unknown error' };
+    return { success: false, error: 'Invalid response from server' };
   };
 
   const logout = () => {
