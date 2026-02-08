@@ -31,9 +31,10 @@ class AdminApiClient {
 
     try {
       const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-      const data = await response.json();
-      if (!response.ok) return { error: data.message || 'Request failed' };
-      return { data };
+      const json = await response.json();
+      if (!response.ok) return { error: json.message || 'Request failed' };
+      // API wraps responses in { success, data }
+      return { data: json.data };
     } catch {
       return { error: 'Network error' };
     }
@@ -41,10 +42,20 @@ class AdminApiClient {
 
   // Auth
   async login(email: string, password: string) {
-    return this.request<{ token: string; user: any }>('/api/admin/login', {
+    const result = await this.request<{ accessToken: string; admin: any }>('/api/admin/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    // Map to expected format
+    if (result.data) {
+      return {
+        data: {
+          token: result.data.accessToken,
+          user: result.data.admin,
+        },
+      };
+    }
+    return { error: result.error };
   }
 
   // Shops
