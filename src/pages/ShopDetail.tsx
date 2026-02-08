@@ -12,7 +12,6 @@ import {
   Phone,
   Mail,
   MapPin,
-  Calendar,
   Package,
   ShoppingCart,
   Users,

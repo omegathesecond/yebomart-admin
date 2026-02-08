@@ -5,11 +5,9 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import {
   User,
-  Mail,
   Lock,
   Bell,
   Shield,
-  Globe,
   Database,
   Save,
   Check,

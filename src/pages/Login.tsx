@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Store, Mail, Lock, AlertCircle } from 'lucide-react';
-import Input from '../components/Input';
 import Button from '../components/Button';
 
 export default function Login() {

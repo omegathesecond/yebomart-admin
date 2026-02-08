@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
 import { TierBadge, StatusBadge } from '../components/Badge';
 import Pagination from '../components/Pagination';
-import Input from '../components/Input';
-import { Search, Filter, Store, ChevronRight } from 'lucide-react';
+import { Search, Store, ChevronRight } from 'lucide-react';
 
 interface Shop {
   id: string;

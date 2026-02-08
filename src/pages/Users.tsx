@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
-import { Search, Users as UsersIcon, Mail, Phone, Store, Calendar } from 'lucide-react';
+import { Search, Users as UsersIcon, Mail, Phone, Store  } from 'lucide-react';
 
 interface User {
   id: string;

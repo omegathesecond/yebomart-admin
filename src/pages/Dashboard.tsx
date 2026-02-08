@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
-import { StatusBadge } from '../components/Badge';
 import {
   Store,
-  Users,
   DollarSign,
   TrendingUp,
   ArrowUpRight,
