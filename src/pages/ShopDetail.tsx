@@ -12,51 +12,32 @@ import {
   Phone,
   Mail,
   MapPin,
-  Package,
-  ShoppingCart,
-  Users,
-  TrendingUp,
   AlertTriangle,
   Trash2,
   Crown,
-  Activity,
-  Clock,
+  Calendar,
 } from 'lucide-react';
 
-interface ShopDetails {
+interface Shop {
   id: string;
   name: string;
-  description: string;
-  owner: {
-    name: string;
-    email: string;
-    phone: string;
-  };
-  address: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail: string | null;
+  address: string | null;
   tier: string;
-  status: string;
-  subscriptionExpiry: string;
   createdAt: string;
-  stats: {
-    products: number;
-    sales: number;
-    users: number;
-    revenue: number;
-  };
-  activityLog: {
-    id: string;
-    action: string;
-    timestamp: string;
-  }[];
+  licenseExpiry: string | null;
 }
 
-const TIERS = ['Lite', 'Starter', 'Business', 'Pro', 'Enterprise'];
+const TIERS = ['FREE', 'Lite', 'Starter', 'Business', 'Pro', 'Enterprise'];
 
 export default function ShopDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [shop, setShop] = useState<ShopDetails | null>(null);
+  const [shop, setShop] = useState<Shop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState<'active' | 'suspended'>('active');
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -67,60 +48,8 @@ export default function ShopDetail() {
     const fetchShop = async () => {
       const { data } = await adminApi.getShop(id!);
       if (data) {
-        // Map API response to expected format
-        const mappedShop: ShopDetails = {
-          id: data.id,
-          name: data.name,
-          description: data.description || '',
-          owner: {
-            name: data.ownerName || '',
-            email: data.ownerEmail || 'N/A',
-            phone: data.ownerPhone || '',
-          },
-          address: data.address || 'Not provided',
-          tier: data.tier || 'FREE',
-          status: data.status || 'active',
-          subscriptionExpiry: data.licenseExpiry || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          createdAt: data.createdAt,
-          stats: {
-            products: data._count?.products || 0,
-            sales: data._count?.sales || 0,
-            users: data._count?.users || 0,
-            revenue: data.totalRevenue || 0,
-          },
-          activityLog: data.activityLog || [],
-        };
-        setShop(mappedShop);
-      } else {
-        // Mock data
-        setShop({
-          id: id!,
-          name: 'Fresh Mart Central',
-          description: 'A premium grocery store offering fresh produce and quality goods.',
-          owner: {
-            name: 'John Dlamini',
-            email: 'john@freshmart.sz',
-            phone: '+26876123456',
-          },
-          address: 'Main Street 42, Mbabane, Eswatini',
-          tier: 'Business',
-          status: 'active',
-          subscriptionExpiry: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-          createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
-          stats: {
-            products: 234,
-            sales: 1542,
-            users: 8,
-            revenue: 45680,
-          },
-          activityLog: [
-            { id: '1', action: 'Product added: Fresh Apples', timestamp: '2 hours ago' },
-            { id: '2', action: 'Sale completed: E250', timestamp: '5 hours ago' },
-            { id: '3', action: 'User added: Mary S.', timestamp: '1 day ago' },
-            { id: '4', action: 'Subscription renewed', timestamp: '2 days ago' },
-            { id: '5', action: 'Inventory updated', timestamp: '3 days ago' },
-          ],
-        });
+        setShop(data);
+        setSelectedTier(data.tier || 'FREE');
       }
       setIsLoading(false);
     };
@@ -129,25 +58,27 @@ export default function ShopDetail() {
 
   const handleUpgrade = async () => {
     setActionLoading(true);
-    await adminApi.updateSubscription(id!, { tier: selectedTier });
-    setShop(prev => prev ? { ...prev, tier: selectedTier } : null);
+    const { error } = await adminApi.updateSubscription(id!, { tier: selectedTier });
+    if (!error) {
+      setShop(prev => prev ? { ...prev, tier: selectedTier } : null);
+    }
     setActionLoading(false);
     setUpgradeModalOpen(false);
   };
 
   const handleSuspend = async () => {
     setActionLoading(true);
-    // API call would go here
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setShop(prev => prev ? { ...prev, status: prev.status === 'suspended' ? 'active' : 'suspended' } : null);
+    // TODO: Add suspend API endpoint
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setStatus(prev => prev === 'suspended' ? 'active' : 'suspended');
     setActionLoading(false);
     setSuspendModalOpen(false);
   };
 
   const handleDelete = async () => {
     setActionLoading(true);
-    // API call would go here
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // TODO: Add delete API endpoint
+    await new Promise(resolve => setTimeout(resolve, 500));
     setActionLoading(false);
     navigate('/shops');
   };
@@ -156,15 +87,7 @@ export default function ShopDetail() {
     return (
       <div className="space-y-6">
         <div className="h-10 w-48 bg-slate-800 rounded animate-pulse" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="h-64 bg-slate-800 rounded-xl animate-pulse" />
-            <div className="h-48 bg-slate-800 rounded-xl animate-pulse" />
-          </div>
-          <div className="space-y-6">
-            <div className="h-64 bg-slate-800 rounded-xl animate-pulse" />
-          </div>
-        </div>
+        <div className="h-64 bg-slate-800 rounded-xl animate-pulse" />
       </div>
     );
   }
@@ -181,13 +104,6 @@ export default function ShopDetail() {
     );
   }
 
-  const stats = [
-    { label: 'Products', value: shop.stats.products, icon: Package, color: 'text-blue-400' },
-    { label: 'Sales', value: shop.stats.sales, icon: ShoppingCart, color: 'text-green-400' },
-    { label: 'Users', value: shop.stats.users, icon: Users, color: 'text-purple-400' },
-    { label: 'Revenue', value: `E${shop.stats.revenue.toLocaleString()}`, icon: TrendingUp, color: 'text-amber-400' },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -202,143 +118,93 @@ export default function ShopDetail() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-white">{shop.name}</h1>
             <TierBadge tier={shop.tier} />
-            <StatusBadge status={shop.status} />
+            <StatusBadge status={status} />
           </div>
-          <p className="text-slate-400 mt-1">{shop.description}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {stats.map((stat) => (
-              <Card key={stat.label}>
-                <CardContent className="p-4 text-center">
-                  <stat.icon className={`w-6 h-6 ${stat.color} mx-auto mb-2`} />
-                  <p className="text-2xl font-bold text-white">{stat.value}</p>
-                  <p className="text-sm text-slate-400">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Owner Info */}
+        {/* Shop Info */}
+        <div className="lg:col-span-2">
           <Card>
             <CardHeader>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <User className="w-5 h-5 text-slate-400" />
-                Owner Information
+                <Store className="w-5 h-5 text-slate-400" />
+                Shop Information
               </h2>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-slate-500" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="flex items-start gap-3">
+                  <User className="w-5 h-5 text-slate-500 mt-0.5" />
                   <div>
-                    <p className="text-sm text-slate-400">Name</p>
-                    <p className="text-white">{shop.owner.name}</p>
+                    <p className="text-sm text-slate-400">Owner Name</p>
+                    <p className="text-white">{shop.ownerName}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-slate-500" />
-                  <div>
-                    <p className="text-sm text-slate-400">Email</p>
-                    <p className="text-white">{shop.owner.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-slate-500" />
+                <div className="flex items-start gap-3">
+                  <Phone className="w-5 h-5 text-slate-500 mt-0.5" />
                   <div>
                     <p className="text-sm text-slate-400">Phone</p>
-                    <p className="text-white">{shop.owner.phone}</p>
+                    <p className="text-white">{shop.ownerPhone}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-slate-500" />
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-slate-500 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-slate-400">Email</p>
+                    <p className="text-white">{shop.ownerEmail || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-slate-500 mt-0.5" />
                   <div>
                     <p className="text-sm text-slate-400">Address</p>
-                    <p className="text-white">{shop.address}</p>
+                    <p className="text-white">{shop.address || 'Not provided'}</p>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Activity Log */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-slate-400" />
-                Activity Log
-              </h2>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-slate-700">
-                {shop.activityLog.map((log) => (
-                  <div key={log.id} className="flex items-center gap-3 px-6 py-3">
-                    <Clock className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                    <span className="text-slate-300 flex-1">{log.action}</span>
-                    <span className="text-sm text-slate-500">{log.timestamp}</span>
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-slate-500 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-slate-400">Joined</p>
+                    <p className="text-white">
+                      {new Date(shop.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-start gap-3">
+                  <Crown className="w-5 h-5 text-slate-500 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-slate-400">License Expires</p>
+                    <p className="text-white">
+                      {shop.licenseExpiry
+                        ? new Date(shop.licenseExpiry).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                        : 'No expiry (Free tier)'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Subscription Info */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Crown className="w-5 h-5 text-amber-500" />
-                Subscription
-              </h2>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-slate-400">Current Tier</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <TierBadge tier={shop.tier} />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Expires</p>
-                <p className="text-white mt-1">
-                  {new Date(shop.subscriptionExpiry).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-slate-400">Member Since</p>
-                <p className="text-white mt-1">
-                  {new Date(shop.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Actions */}
+        {/* Actions Sidebar */}
+        <div>
           <Card>
             <CardHeader>
               <h2 className="text-lg font-semibold text-white">Actions</h2>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
-                onClick={() => {
-                  setSelectedTier(shop.tier);
-                  setUpgradeModalOpen(true);
-                }}
+                onClick={() => setUpgradeModalOpen(true)}
                 className="w-full"
                 variant="primary"
               >
@@ -351,7 +217,7 @@ export default function ShopDetail() {
                 variant="secondary"
               >
                 <AlertTriangle className="w-4 h-4 mr-2" />
-                {shop.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                {status === 'suspended' ? 'Reactivate' : 'Suspend'}
               </Button>
               <Button
                 onClick={() => setDeleteModalOpen(true)}
@@ -366,7 +232,7 @@ export default function ShopDetail() {
         </div>
       </div>
 
-      {/* Upgrade Modal */}
+      {/* Change Tier Modal */}
       <Modal
         isOpen={upgradeModalOpen}
         onClose={() => setUpgradeModalOpen(false)}
@@ -418,11 +284,11 @@ export default function ShopDetail() {
       <Modal
         isOpen={suspendModalOpen}
         onClose={() => setSuspendModalOpen(false)}
-        title={shop.status === 'suspended' ? 'Reactivate Shop' : 'Suspend Shop'}
+        title={status === 'suspended' ? 'Reactivate Shop' : 'Suspend Shop'}
       >
         <div className="space-y-4">
           <p className="text-slate-300">
-            {shop.status === 'suspended'
+            {status === 'suspended'
               ? 'Are you sure you want to reactivate this shop? The owner will regain access immediately.'
               : 'Are you sure you want to suspend this shop? The owner will lose access until reactivated.'}
           </p>
@@ -431,12 +297,12 @@ export default function ShopDetail() {
               Cancel
             </Button>
             <Button
-              variant={shop.status === 'suspended' ? 'primary' : 'danger'}
+              variant={status === 'suspended' ? 'primary' : 'danger'}
               onClick={handleSuspend}
               isLoading={actionLoading}
               className="flex-1"
             >
-              {shop.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+              {status === 'suspended' ? 'Reactivate' : 'Suspend'}
             </Button>
           </div>
         </div>
