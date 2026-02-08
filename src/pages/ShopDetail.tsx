@@ -67,7 +67,30 @@ export default function ShopDetail() {
     const fetchShop = async () => {
       const { data } = await adminApi.getShop(id!);
       if (data) {
-        setShop(data);
+        // Map API response to expected format
+        const mappedShop: ShopDetails = {
+          id: data.id,
+          name: data.name,
+          description: data.description || '',
+          owner: {
+            name: data.ownerName || '',
+            email: data.ownerEmail || 'N/A',
+            phone: data.ownerPhone || '',
+          },
+          address: data.address || 'Not provided',
+          tier: data.tier || 'FREE',
+          status: data.status || 'active',
+          subscriptionExpiry: data.licenseExpiry || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          createdAt: data.createdAt,
+          stats: {
+            products: data._count?.products || 0,
+            sales: data._count?.sales || 0,
+            users: data._count?.users || 0,
+            revenue: data.totalRevenue || 0,
+          },
+          activityLog: data.activityLog || [],
+        };
+        setShop(mappedShop);
       } else {
         // Mock data
         setShop({
