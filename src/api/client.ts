@@ -46,8 +46,8 @@ class AdminApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    // Map to expected format
-    if (result.data) {
+    // Validate response has required fields
+    if (result.data?.accessToken && result.data?.admin) {
       return {
         data: {
           token: result.data.accessToken,
@@ -55,7 +55,7 @@ class AdminApiClient {
         },
       };
     }
-    return { error: result.error };
+    return { error: result.error || 'Invalid login response' };
   }
 
   // Shops
