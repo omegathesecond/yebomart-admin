@@ -86,6 +86,19 @@ class AdminApiClient {
     });
   }
 
+  async updateShopStatus(shopId: string, status: 'active' | 'suspended') {
+    return this.request<any>(`/api/admin/shops/${shopId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async deleteShop(shopId: string) {
+    return this.request<void>(`/api/admin/shops/${shopId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Analytics
   async getDashboard() {
     return this.request<{

@@ -68,19 +68,23 @@ export default function ShopDetail() {
 
   const handleSuspend = async () => {
     setActionLoading(true);
-    // TODO: Add suspend API endpoint
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setStatus(prev => prev === 'suspended' ? 'active' : 'suspended');
+    const newStatus = status === 'suspended' ? 'active' : 'suspended';
+    const { error } = await adminApi.updateShopStatus(id!, newStatus);
+    if (!error) {
+      setStatus(newStatus);
+    }
     setActionLoading(false);
     setSuspendModalOpen(false);
   };
 
   const handleDelete = async () => {
     setActionLoading(true);
-    // TODO: Add delete API endpoint
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const { error } = await adminApi.deleteShop(id!);
     setActionLoading(false);
-    navigate('/shops');
+    if (!error) {
+      navigate('/shops');
+    }
+    setDeleteModalOpen(false);
   };
 
   if (isLoading) {
