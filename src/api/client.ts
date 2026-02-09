@@ -74,6 +74,10 @@ class AdminApiClient {
     return this.request<{ users: any[]; total: number }>(`/api/admin/users${query}`);
   }
 
+  async getUserDetail(userId: string, days: number = 30) {
+    return this.request<any>(`/api/admin/users/${userId}?days=${days}`);
+  }
+
   // Subscriptions
   async getSubscriptions() {
     return this.request<any[]>('/api/admin/subscriptions');

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
@@ -33,6 +33,7 @@ const mockUsers: User[] = Array.from({ length: 80 }, (_, i) => ({
 }));
 
 export default function Users() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -159,7 +160,11 @@ export default function Users() {
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow 
+                      key={user.id} 
+                      className="cursor-pointer hover:bg-slate-700/50 transition-colors"
+                      onClick={() => navigate(`/users/${user.id}`)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center">
