@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
+import ErrorState from '../components/ErrorState';
 import {
   Store,
   DollarSign,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
   Activity,
   Clock,
 } from 'lucide-react';
@@ -23,11 +22,10 @@ import {
   Bar,
 } from 'recharts';
 
-interface DashboardData {
-  totalShops: number;
-  activeShops: number;
-  totalRevenue: number;
-  newShopsToday: number;
+interface ChartPoint {
+  name: string;
+  shops: number;
+  revenue: number;
 }
 
 interface RecentActivity {
@@ -38,77 +36,74 @@ interface RecentActivity {
   timestamp: string;
 }
 
-const mockChartData = [
-  { name: 'Jan', shops: 40, revenue: 2400 },
-  { name: 'Feb', shops: 55, revenue: 3200 },
-  { name: 'Mar', shops: 72, revenue: 4100 },
-  { name: 'Apr', shops: 85, revenue: 4800 },
-  { name: 'May', shops: 98, revenue: 5200 },
-  { name: 'Jun', shops: 115, revenue: 6100 },
-  { name: 'Jul', shops: 128, revenue: 6800 },
-];
+interface DashboardData {
+  totalShops: number;
+  activeShops: number;
+  totalRevenue: number;
+  newShopsToday: number;
+  chartData: ChartPoint[];
+  recentActivity: RecentActivity[];
+}
 
-const mockActivity: RecentActivity[] = [
-  { id: '1', type: 'signup', message: 'New shop registered', shopName: 'Fresh Mart', timestamp: '2 minutes ago' },
-  { id: '2', type: 'upgrade', message: 'Upgraded to Business tier', shopName: 'City Store', timestamp: '15 minutes ago' },
-  { id: '3', type: 'sale', message: 'First sale completed', shopName: 'Quick Shop', timestamp: '1 hour ago' },
-  { id: '4', type: 'signup', message: 'New shop registered', shopName: 'Super Save', timestamp: '2 hours ago' },
-  { id: '5', type: 'renewal', message: 'Subscription renewed', shopName: 'Daily Needs', timestamp: '3 hours ago' },
-];
+/** Compact "x ago" relative time from an ISO timestamp. */
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Math.max(0, Date.now() - then);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} minute${mins > 1 ? 's' : ''} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: dashboardData } = await adminApi.getDashboard();
-      if (dashboardData) {
-        setData(dashboardData);
+      setIsLoading(true);
+      setError(null);
+      const { data: dashboardData, error: apiError } = await adminApi.getDashboard();
+      if (apiError || !dashboardData) {
+        // No silent fallback — surface the failure instead of fabricating totals.
+        setError(apiError || 'No data returned from the server.');
+        setData(null);
       } else {
-        // Mock data for demo
-        setData({
-          totalShops: 256,
-          activeShops: 198,
-          totalRevenue: 45680,
-          newShopsToday: 12,
-        });
+        setData(dashboardData);
       }
       setIsLoading(false);
     };
     fetchData();
-  }, []);
+  }, [reloadKey]);
 
   const stats = data ? [
     {
       name: 'Total Shops',
       value: data.totalShops.toLocaleString(),
-      change: '+12%',
-      trend: 'up',
       icon: Store,
       color: 'from-blue-500 to-blue-600',
     },
     {
       name: 'Active Shops',
       value: data.activeShops.toLocaleString(),
-      change: '+8%',
-      trend: 'up',
       icon: Activity,
       color: 'from-green-500 to-green-600',
     },
     {
       name: 'Total Revenue',
       value: `E${data.totalRevenue.toLocaleString()}`,
-      change: '+23%',
-      trend: 'up',
       icon: DollarSign,
       color: 'from-amber-500 to-orange-600',
     },
     {
       name: 'New Today',
       value: data.newShopsToday.toString(),
-      change: '-3%',
-      trend: 'down',
       icon: TrendingUp,
       color: 'from-purple-500 to-purple-600',
     },
@@ -126,6 +121,25 @@ export default function Dashboard() {
           <div className="h-80 bg-slate-800 rounded-xl animate-pulse" />
           <div className="h-80 bg-slate-800 rounded-xl animate-pulse" />
         </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <p className="text-slate-400">Welcome back! Here's what's happening with YeboMart.</p>
+        </div>
+        <Card>
+          <CardContent>
+            <ErrorState
+              message={error || 'No data returned from the server.'}
+              onRetry={() => setReloadKey((k) => k + 1)}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -148,17 +162,6 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm text-slate-400">{stat.name}</p>
                   <p className="text-2xl font-bold text-white mt-1">{stat.value}</p>
-                  <div className="flex items-center gap-1 mt-2">
-                    {stat.trend === 'up' ? (
-                      <ArrowUpRight className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <ArrowDownRight className="w-4 h-4 text-red-400" />
-                    )}
-                    <span className={stat.trend === 'up' ? 'text-green-400 text-sm' : 'text-red-400 text-sm'}>
-                      {stat.change}
-                    </span>
-                    <span className="text-slate-500 text-sm">vs last month</span>
-                  </div>
                 </div>
                 <div className={`p-3 rounded-lg bg-gradient-to-br ${stat.color}`}>
                   <stat.icon className="w-5 h-5 text-white" />
@@ -176,8 +179,13 @@ export default function Dashboard() {
             <h2 className="text-lg font-semibold text-white">Shop Growth</h2>
           </CardHeader>
           <CardContent>
+            {data.chartData.length === 0 ? (
+              <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
+                No shop data yet
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={mockChartData}>
+              <AreaChart data={data.chartData}>
                 <defs>
                   <linearGradient id="colorShops" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
@@ -205,6 +213,7 @@ export default function Dashboard() {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -213,8 +222,13 @@ export default function Dashboard() {
             <h2 className="text-lg font-semibold text-white">Revenue</h2>
           </CardHeader>
           <CardContent>
+            {data.chartData.length === 0 ? (
+              <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
+                No revenue data yet
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={mockChartData}>
+              <BarChart data={data.chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="name" stroke="#64748b" />
                 <YAxis stroke="#64748b" />
@@ -229,6 +243,7 @@ export default function Dashboard() {
                 <Bar dataKey="revenue" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -242,14 +257,21 @@ export default function Dashboard() {
           </Link>
         </CardHeader>
         <CardContent className="p-0">
+          {data.recentActivity.length === 0 ? (
+            <div className="p-8 text-center">
+              <Activity className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+              <p className="text-slate-400">No recent activity</p>
+            </div>
+          ) : (
           <div className="divide-y divide-slate-700">
-            {mockActivity.map((activity) => (
+            {data.recentActivity.map((activity) => (
               <div key={activity.id} className="flex items-center gap-4 p-4 hover:bg-slate-700/50 transition-colors">
                 <div className="p-2 rounded-lg bg-slate-700">
                   {activity.type === 'signup' && <Store className="w-4 h-4 text-blue-400" />}
-                  {activity.type === 'upgrade' && <TrendingUp className="w-4 h-4 text-green-400" />}
                   {activity.type === 'sale' && <DollarSign className="w-4 h-4 text-amber-400" />}
-                  {activity.type === 'renewal' && <Activity className="w-4 h-4 text-purple-400" />}
+                  {activity.type !== 'signup' && activity.type !== 'sale' && (
+                    <Activity className="w-4 h-4 text-purple-400" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white">{activity.message}</p>
@@ -257,11 +279,12 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center gap-1 text-xs text-slate-500">
                   <Clock className="w-3 h-3" />
-                  {activity.timestamp}
+                  {timeAgo(activity.timestamp)}
                 </div>
               </div>
             ))}
           </div>
+          )}
         </CardContent>
       </Card>
     </div>

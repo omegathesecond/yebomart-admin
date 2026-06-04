@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
 import Badge from '../components/Badge';
 import Pagination from '../components/Pagination';
+import ErrorState from '../components/ErrorState';
 import { Search, Users as UsersIcon, Mail, Phone, Store  } from 'lucide-react';
 
 interface User {
@@ -14,23 +15,10 @@ interface User {
   phone: string;
   shopName: string;
   role: string;
-  lastActive: string;
   createdAt: string;
 }
 
 const ITEMS_PER_PAGE = 15;
-
-// Mock data
-const mockUsers: User[] = Array.from({ length: 80 }, (_, i) => ({
-  id: `user-${i + 1}`,
-  name: ['John Dlamini', 'Mary Simelane', 'Peter Nkosi', 'Grace Mamba', 'David Zwane', 'Sarah Khumalo', 'Michael Maseko', 'Linda Matsebula'][i % 8],
-  email: `user${i + 1}@example.com`,
-  phone: `+26876${String(100000 + i).padStart(6, '0')}`,
-  shopName: ['Fresh Mart', 'Quick Shop', 'Super Save', 'Daily Needs', 'City Store'][i % 5] + ` ${Math.floor(i / 5) + 1}`,
-  role: i % 8 === 0 ? 'owner' : i % 3 === 0 ? 'manager' : 'cashier',
-  lastActive: ['2 minutes ago', '1 hour ago', '3 hours ago', 'Yesterday', '3 days ago'][i % 5],
-  createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-}));
 
 export default function Users() {
   const navigate = useNavigate();
@@ -38,42 +26,57 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState(searchParams.get('role') || 'all');
-  
+
   const page = parseInt(searchParams.get('page') || '1', 10);
 
   useEffect(() => {
     const fetchUsers = async () => {
       setIsLoading(true);
-      const { data } = await adminApi.getUsers({ page, limit: ITEMS_PER_PAGE });
-      
-      if (data) {
-        setUsers(data.users);
-        setTotal(data.total);
-      } else {
-        // Use mock data
-        let filtered = mockUsers;
-        if (search) {
-          const s = search.toLowerCase();
-          filtered = filtered.filter(u => 
+      setError(null);
+      const { data, error: apiError } = await adminApi.getUsers({ page, limit: ITEMS_PER_PAGE });
+
+      if (apiError || !data) {
+        // No silent fallback — surface the failure instead of fabricating rows.
+        setError(apiError || 'No data returned from the server.');
+        setUsers([]);
+        setTotal(0);
+        setIsLoading(false);
+        return;
+      }
+
+      let mapped: User[] = data.users.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email || '—',
+        phone: u.phone,
+        shopName: u.shop?.name || u.shopName || '—',
+        role: (u.role || 'cashier').toLowerCase(),
+        createdAt: u.createdAt,
+      }));
+      // Search/role are client-side display filters over the returned page.
+      if (search) {
+        const s = search.toLowerCase();
+        mapped = mapped.filter(
+          (u) =>
             u.name.toLowerCase().includes(s) ||
             u.email.toLowerCase().includes(s) ||
             u.phone.includes(search) ||
             u.shopName.toLowerCase().includes(s)
-          );
-        }
-        if (roleFilter !== 'all') {
-          filtered = filtered.filter(u => u.role === roleFilter);
-        }
-        
-        setTotal(filtered.length);
-        setUsers(filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE));
+        );
       }
+      if (roleFilter !== 'all') {
+        mapped = mapped.filter((u) => u.role === roleFilter);
+      }
+      setUsers(mapped);
+      setTotal(data.total);
       setIsLoading(false);
     };
     fetchUsers();
-  }, [page, search, roleFilter]);
+  }, [page, search, roleFilter, reloadKey]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -140,6 +143,8 @@ export default function Users() {
             <div className="p-8 text-center">
               <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
+          ) : error ? (
+            <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
           ) : users.length === 0 ? (
             <div className="p-8 text-center">
               <UsersIcon className="w-12 h-12 text-slate-600 mx-auto mb-4" />
@@ -154,7 +159,6 @@ export default function Users() {
                     <TableHead>Contact</TableHead>
                     <TableHead>Shop</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Last Active</TableHead>
                     <TableHead>Joined</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -198,7 +202,6 @@ export default function Users() {
                           {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{user.lastActive}</TableCell>
                       <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}

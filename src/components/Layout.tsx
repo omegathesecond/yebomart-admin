@@ -18,7 +18,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Shops', href: '/shops', icon: Store },
   { name: 'Users', href: '/users', icon: Users },
-  { name: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
+  { name: 'Shop Status', href: '/subscriptions', icon: CreditCard },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

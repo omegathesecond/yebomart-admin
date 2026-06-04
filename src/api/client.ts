@@ -78,9 +78,10 @@ class AdminApiClient {
     return this.request<any>(`/api/admin/users/${userId}?days=${days}`);
   }
 
-  // Subscriptions
+  // Shop status breakdown (formerly "subscriptions" — tiers were removed;
+  // returns one entry per shop status with a count).
   async getSubscriptions() {
-    return this.request<any[]>('/api/admin/subscriptions');
+    return this.request<{ status: string; _count: number }[]>('/api/admin/subscriptions');
   }
 
   async updateSubscription(shopId: string, data: { tier: string; expiresAt?: string }) {
@@ -110,6 +111,14 @@ class AdminApiClient {
       activeShops: number;
       totalRevenue: number;
       newShopsToday: number;
+      chartData: { name: string; shops: number; revenue: number }[];
+      recentActivity: {
+        id: string;
+        type: string;
+        message: string;
+        shopName: string;
+        timestamp: string;
+      }[];
     }>('/api/admin/dashboard');
   }
 
