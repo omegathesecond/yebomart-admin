@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
 import { TierBadge, StatusBadge } from '../components/Badge';
 import Pagination from '../components/Pagination';
+import ErrorState from '../components/ErrorState';
 import { Search, Store, ChevronRight } from 'lucide-react';
 
 interface Shop {
@@ -19,71 +20,58 @@ interface Shop {
 
 const ITEMS_PER_PAGE = 10;
 
-// Mock data for demo
-const mockShops: Shop[] = Array.from({ length: 50 }, (_, i) => ({
-  id: `shop-${i + 1}`,
-  name: ['Fresh Mart', 'Quick Shop', 'Super Save', 'Daily Needs', 'City Store', 'Corner Shop', 'Mini Mart', 'Value Plus'][i % 8] + ` ${i + 1}`,
-  ownerName: ['John Dlamini', 'Mary Simelane', 'Peter Nkosi', 'Grace Mamba', 'David Zwane'][i % 5],
-  phone: `+26876${String(100000 + i).padStart(6, '0')}`,
-  tier: ['Lite', 'Starter', 'Business', 'Pro', 'Enterprise'][i % 5],
-  status: i % 7 === 0 ? 'inactive' : i % 11 === 0 ? 'suspended' : 'active',
-  createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-}));
-
 export default function Shops() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [shops, setShops] = useState<Shop[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [tierFilter, setTierFilter] = useState(searchParams.get('tier') || 'all');
-  
+
   const page = parseInt(searchParams.get('page') || '1', 10);
 
   useEffect(() => {
     const fetchShops = async () => {
       setIsLoading(true);
-      const { data } = await adminApi.getShops({ page, limit: ITEMS_PER_PAGE, search });
-      
-      if (data) {
-        // Map API fields to expected format
-        const mappedShops = data.shops.map((shop: any) => ({
-          id: shop.id,
-          name: shop.name,
-          ownerName: shop.ownerName,
-          phone: shop.ownerPhone || shop.phone,
-          tier: shop.tier || 'FREE',
-          status: shop.status || 'active',
-          createdAt: shop.createdAt,
-        }));
-        setShops(mappedShops);
-        setTotal(data.total);
-      } else {
-        // Use mock data
-        let filtered = mockShops;
-        if (search) {
-          filtered = filtered.filter(s => 
-            s.name.toLowerCase().includes(search.toLowerCase()) ||
-            s.ownerName.toLowerCase().includes(search.toLowerCase()) ||
-            s.phone.includes(search)
-          );
-        }
-        if (statusFilter !== 'all') {
-          filtered = filtered.filter(s => s.status === statusFilter);
-        }
-        if (tierFilter !== 'all') {
-          filtered = filtered.filter(s => s.tier.toLowerCase() === tierFilter.toLowerCase());
-        }
-        
-        setTotal(filtered.length);
-        setShops(filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE));
+      setError(null);
+      const { data, error: apiError } = await adminApi.getShops({ page, limit: ITEMS_PER_PAGE, search });
+
+      if (apiError || !data) {
+        // No silent fallback — surface the failure instead of fabricating rows.
+        setError(apiError || 'No data returned from the server.');
+        setShops([]);
+        setTotal(0);
+        setIsLoading(false);
+        return;
       }
+
+      // Map API fields to expected format
+      let mappedShops: Shop[] = data.shops.map((shop: any) => ({
+        id: shop.id,
+        name: shop.name,
+        ownerName: shop.ownerName,
+        phone: shop.ownerPhone || shop.phone,
+        tier: shop.tier || 'FREE',
+        status: (shop.status || 'active').toLowerCase(),
+        createdAt: shop.createdAt,
+      }));
+      // Status/tier are client-side display filters over the returned page.
+      if (statusFilter !== 'all') {
+        mappedShops = mappedShops.filter((s) => s.status === statusFilter);
+      }
+      if (tierFilter !== 'all') {
+        mappedShops = mappedShops.filter((s) => s.tier.toLowerCase() === tierFilter.toLowerCase());
+      }
+      setShops(mappedShops);
+      setTotal(data.total);
       setIsLoading(false);
     };
     fetchShops();
-  }, [page, search, statusFilter, tierFilter]);
+  }, [page, search, statusFilter, tierFilter, reloadKey]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -159,6 +147,8 @@ export default function Shops() {
             <div className="p-8 text-center">
               <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
+          ) : error ? (
+            <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
           ) : shops.length === 0 ? (
             <div className="p-8 text-center">
               <Store className="w-12 h-12 text-slate-600 mx-auto mb-4" />
