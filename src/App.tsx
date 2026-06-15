@@ -9,6 +9,7 @@ import ShopDetail from './pages/ShopDetail';
 import Users from './pages/Users';
 import UserDetail from './pages/UserDetail';
 import Subscriptions from './pages/Subscriptions';
+import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
                     <Route path="/users" element={<Users />} />
                     <Route path="/users/:id" element={<UserDetail />} />
                     <Route path="/subscriptions" element={<Subscriptions />} />
+                    <Route path="/audit" element={<AuditLogs />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

@@ -104,6 +104,29 @@ class AdminApiClient {
     });
   }
 
+  // Audit logs (cross-shop activity log — ops fraud-detection / dispute
+  // surface). Backed by GET /api/admin/audit (authenticateAdmin). Empty
+  // filters are stripped so we never send blank query params.
+  async getAuditLogs(params?: {
+    page?: number;
+    limit?: number;
+    shopId?: string;
+    userId?: string;
+    action?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const entries = Object.entries(params ?? {}).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
+    );
+    const query = entries.length
+      ? `?${new URLSearchParams(Object.fromEntries(entries.map(([k, v]) => [k, String(v)])))}`
+      : '';
+    return this.request<{ logs: any[]; total: number; page: number; limit: number }>(
+      `/api/admin/audit${query}`
+    );
+  }
+
   // Analytics
   async getDashboard() {
     return this.request<{

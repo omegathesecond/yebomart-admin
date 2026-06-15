@@ -6,6 +6,7 @@ import {
   Store,
   Users,
   CreditCard,
+  ScrollText,
   Settings,
   LogOut,
   Menu,
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Shops', href: '/shops', icon: Store },
   { name: 'Users', href: '/users', icon: Users },
   { name: 'Shop Status', href: '/subscriptions', icon: CreditCard },
+  { name: 'Audit Logs', href: '/audit', icon: ScrollText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

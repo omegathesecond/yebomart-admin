@@ -16,6 +16,7 @@ import {
   Trash2,
   Crown,
   Calendar,
+  ScrollText,
 } from 'lucide-react';
 
 interface Shop {
@@ -125,6 +126,13 @@ export default function ShopDetail() {
             <StatusBadge status={status} />
           </div>
         </div>
+        <Link
+          to={`/audit?shopId=${shop.id}`}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+        >
+          <ScrollText className="w-4 h-4" />
+          Audit Log
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

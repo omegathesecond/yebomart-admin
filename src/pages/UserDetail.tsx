@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
@@ -19,7 +19,8 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle,
-  Info
+  Info,
+  ScrollText
 } from 'lucide-react';
 import {
   LineChart,
@@ -202,6 +203,13 @@ export default function UserDetail() {
           <option value={30}>Last 30 days</option>
           <option value={90}>Last 90 days</option>
         </select>
+        <Link
+          to={`/audit?userId=${user.id}`}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+        >
+          <ScrollText className="w-4 h-4" />
+          Audit Log
+        </Link>
       </div>
 
       {/* User Info Card */}
