@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
-import { TierBadge, StatusBadge } from '../components/Badge';
+import { StatusBadge } from '../components/Badge';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import {
@@ -14,7 +14,6 @@ import {
   MapPin,
   AlertTriangle,
   Trash2,
-  Crown,
   Calendar,
 } from 'lucide-react';
 
@@ -25,12 +24,8 @@ interface Shop {
   ownerPhone: string;
   ownerEmail: string | null;
   address: string | null;
-  tier: string;
   createdAt: string;
-  licenseExpiry: string | null;
 }
-
-const TIERS = ['FREE', 'Lite', 'Starter', 'Business', 'Pro', 'Enterprise'];
 
 export default function ShopDetail() {
   const { id } = useParams<{ id: string }>();
@@ -38,10 +33,8 @@ export default function ShopDetail() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<'active' | 'suspended'>('active');
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedTier, setSelectedTier] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -49,22 +42,11 @@ export default function ShopDetail() {
       const { data } = await adminApi.getShop(id!);
       if (data) {
         setShop(data);
-        setSelectedTier(data.tier || 'FREE');
       }
       setIsLoading(false);
     };
     fetchShop();
   }, [id]);
-
-  const handleUpgrade = async () => {
-    setActionLoading(true);
-    const { error } = await adminApi.updateSubscription(id!, { tier: selectedTier });
-    if (!error) {
-      setShop(prev => prev ? { ...prev, tier: selectedTier } : null);
-    }
-    setActionLoading(false);
-    setUpgradeModalOpen(false);
-  };
 
   const handleSuspend = async () => {
     setActionLoading(true);
@@ -121,7 +103,6 @@ export default function ShopDetail() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-white">{shop.name}</h1>
-            <TierBadge tier={shop.tier} />
             <StatusBadge status={status} />
           </div>
         </div>
@@ -180,21 +161,6 @@ export default function ShopDetail() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Crown className="w-5 h-5 text-slate-500 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-slate-400">License Expires</p>
-                    <p className="text-white">
-                      {shop.licenseExpiry
-                        ? new Date(shop.licenseExpiry).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : 'No expiry (Free tier)'}
-                    </p>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -207,14 +173,6 @@ export default function ShopDetail() {
               <h2 className="text-lg font-semibold text-white">Actions</h2>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button
-                onClick={() => setUpgradeModalOpen(true)}
-                className="w-full"
-                variant="primary"
-              >
-                <Crown className="w-4 h-4 mr-2" />
-                Change Tier
-              </Button>
               <Button
                 onClick={() => setSuspendModalOpen(true)}
                 className="w-full"
@@ -235,54 +193,6 @@ export default function ShopDetail() {
           </Card>
         </div>
       </div>
-
-      {/* Change Tier Modal */}
-      <Modal
-        isOpen={upgradeModalOpen}
-        onClose={() => setUpgradeModalOpen(false)}
-        title="Change Subscription Tier"
-      >
-        <div className="space-y-4">
-          <p className="text-slate-300">Select a new tier for this shop:</p>
-          <div className="space-y-2">
-            {TIERS.map((tier) => (
-              <label
-                key={tier}
-                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedTier === tier
-                    ? 'border-amber-500 bg-amber-500/10'
-                    : 'border-slate-600 hover:bg-slate-700'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="tier"
-                  value={tier}
-                  checked={selectedTier === tier}
-                  onChange={(e) => setSelectedTier(e.target.value)}
-                  className="sr-only"
-                />
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                  selectedTier === tier ? 'border-amber-500' : 'border-slate-500'
-                }`}>
-                  {selectedTier === tier && (
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                  )}
-                </div>
-                <TierBadge tier={tier} />
-              </label>
-            ))}
-          </div>
-          <div className="flex gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setUpgradeModalOpen(false)} className="flex-1">
-              Cancel
-            </Button>
-            <Button onClick={handleUpgrade} isLoading={actionLoading} className="flex-1">
-              Update Tier
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Suspend Modal */}
       <Modal

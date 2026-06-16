@@ -26,24 +26,6 @@ export default function Badge({ children, variant = 'default', className }: Badg
   );
 }
 
-export function TierBadge({ tier }: { tier?: string }) {
-  const tierValue = tier || 'free';
-  const variants: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
-    free: 'default',
-    lite: 'default',
-    starter: 'info',
-    business: 'warning',
-    pro: 'success',
-    enterprise: 'danger',
-  };
-
-  return (
-    <Badge variant={variants[tierValue.toLowerCase()] || 'default'}>
-      {tierValue}
-    </Badge>
-  );
-}
-
 export function StatusBadge({ status }: { status?: string }) {
   const statusValue = status || 'active';
   const variants: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
