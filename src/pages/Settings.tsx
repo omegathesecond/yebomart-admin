@@ -9,15 +9,12 @@ import {
   Bell,
   Shield,
   Database,
-  Save,
-  Check,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function Settings() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'system'>('profile');
-  const [isSaving, setIsSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   // Profile state
   const [name, setName] = useState(user?.name || 'Admin User');
@@ -31,21 +28,11 @@ export default function Settings() {
   // Notification state
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [newShopAlerts, setNewShopAlerts] = useState(true);
-  const [subscriptionAlerts, setSubscriptionAlerts] = useState(true);
   const [weeklyReports, setWeeklyReports] = useState(false);
 
   // System state
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [allowRegistrations, setAllowRegistrations] = useState(true);
-  const [defaultTier, setDefaultTier] = useState('lite');
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -59,6 +46,20 @@ export default function Settings() {
       <div>
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="text-slate-400">Manage your account and system settings</p>
+      </div>
+
+      {/* These controls are a preview of planned settings. There is no admin
+          settings/profile API yet, so nothing here is persisted — the Save
+          buttons are disabled to avoid presenting a fake success. */}
+      <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10">
+        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium text-amber-400">Not yet connected to the backend</p>
+          <p className="text-sm text-amber-200/80">
+            These settings are a preview. Changes made here are not saved — there is
+            no admin settings API yet.
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
@@ -118,10 +119,7 @@ export default function Settings() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 <div className="pt-4">
-                  <Button onClick={handleSave} isLoading={isSaving}>
-                    {saved ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    {saved ? 'Saved!' : 'Save Changes'}
-                  </Button>
+                  <Button disabled>Save Changes</Button>
                 </div>
               </CardContent>
             </Card>
@@ -163,11 +161,7 @@ export default function Settings() {
                   error={confirmPassword && confirmPassword !== newPassword ? 'Passwords do not match' : undefined}
                 />
                 <div className="pt-4">
-                  <Button
-                    onClick={handleSave}
-                    isLoading={isSaving}
-                    disabled={!currentPassword || !newPassword || newPassword !== confirmPassword}
-                  >
+                  <Button disabled>
                     <Lock className="w-4 h-4 mr-2" />
                     Update Password
                   </Button>
@@ -212,18 +206,6 @@ export default function Settings() {
                   </label>
                   <label className="flex items-center justify-between p-3 rounded-lg bg-slate-700/50">
                     <div>
-                      <p className="font-medium text-white">Subscription Alerts</p>
-                      <p className="text-sm text-slate-400">Get notified about subscription changes</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={subscriptionAlerts}
-                      onChange={(e) => setSubscriptionAlerts(e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-500 bg-slate-700 text-amber-500 focus:ring-amber-500"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-3 rounded-lg bg-slate-700/50">
-                    <div>
                       <p className="font-medium text-white">Weekly Reports</p>
                       <p className="text-sm text-slate-400">Receive weekly summary reports</p>
                     </div>
@@ -236,10 +218,7 @@ export default function Settings() {
                   </label>
                 </div>
                 <div className="pt-4">
-                  <Button onClick={handleSave} isLoading={isSaving}>
-                    {saved ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    {saved ? 'Saved!' : 'Save Preferences'}
-                  </Button>
+                  <Button disabled>Save Preferences</Button>
                 </div>
               </CardContent>
             </Card>
@@ -279,29 +258,9 @@ export default function Settings() {
                       className="w-5 h-5 rounded border-slate-500 bg-slate-700 text-amber-500 focus:ring-amber-500"
                     />
                   </label>
-                  <div className="p-3 rounded-lg bg-slate-700/50">
-                    <label className="block">
-                      <p className="font-medium text-white mb-1">Default Subscription Tier</p>
-                      <p className="text-sm text-slate-400 mb-3">Tier assigned to new shops</p>
-                      <select
-                        value={defaultTier}
-                        onChange={(e) => setDefaultTier(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="lite">Lite (Free)</option>
-                        <option value="starter">Starter</option>
-                        <option value="business">Business</option>
-                        <option value="pro">Pro</option>
-                        <option value="enterprise">Enterprise</option>
-                      </select>
-                    </label>
-                  </div>
                 </div>
                 <div className="pt-4">
-                  <Button onClick={handleSave} isLoading={isSaving}>
-                    {saved ? <Check className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    {saved ? 'Saved!' : 'Save Settings'}
-                  </Button>
+                  <Button disabled>Save Settings</Button>
                 </div>
               </CardContent>
             </Card>
