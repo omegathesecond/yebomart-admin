@@ -36,7 +36,14 @@ export default function Shops() {
     const fetchShops = async () => {
       setIsLoading(true);
       setError(null);
-      const { data, error: apiError } = await adminApi.getShops({ page, limit: ITEMS_PER_PAGE, search });
+      // Search + status are applied server-side (filtered in Prisma) so results
+      // and pagination reflect the WHOLE dataset, not just the current page.
+      const { data, error: apiError } = await adminApi.getShops({
+        page,
+        limit: ITEMS_PER_PAGE,
+        search,
+        status: statusFilter,
+      });
 
       if (apiError || !data) {
         // No silent fallback — surface the failure instead of fabricating rows.
@@ -48,7 +55,7 @@ export default function Shops() {
       }
 
       // Map API fields to expected format
-      let mappedShops: Shop[] = data.shops.map((shop: any) => ({
+      const mappedShops: Shop[] = data.shops.map((shop: any) => ({
         id: shop.id,
         name: shop.name,
         ownerName: shop.ownerName,
@@ -56,10 +63,6 @@ export default function Shops() {
         status: (shop.status || 'active').toLowerCase(),
         createdAt: shop.createdAt,
       }));
-      // Status is a client-side display filter over the returned page.
-      if (statusFilter !== 'all') {
-        mappedShops = mappedShops.filter((s) => s.status === statusFilter);
-      }
       setShops(mappedShops);
       setTotal(data.total);
       setIsLoading(false);
@@ -115,7 +118,6 @@ export default function Shops() {
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
                 <option value="suspended">Suspended</option>
               </select>
             </div>

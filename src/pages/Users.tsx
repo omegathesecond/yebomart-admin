@@ -37,7 +37,14 @@ export default function Users() {
     const fetchUsers = async () => {
       setIsLoading(true);
       setError(null);
-      const { data, error: apiError } = await adminApi.getUsers({ page, limit: ITEMS_PER_PAGE });
+      // Search + role are applied server-side (filtered in Prisma) so results
+      // and pagination reflect the WHOLE dataset, not just the current page.
+      const { data, error: apiError } = await adminApi.getUsers({
+        page,
+        limit: ITEMS_PER_PAGE,
+        search,
+        role: roleFilter,
+      });
 
       if (apiError || !data) {
         // No silent fallback — surface the failure instead of fabricating rows.
@@ -48,7 +55,7 @@ export default function Users() {
         return;
       }
 
-      let mapped: User[] = data.users.map((u: any) => ({
+      const mapped: User[] = data.users.map((u: any) => ({
         id: u.id,
         name: u.name,
         email: u.email || '—',
@@ -57,20 +64,6 @@ export default function Users() {
         role: (u.role || 'cashier').toLowerCase(),
         createdAt: u.createdAt,
       }));
-      // Search/role are client-side display filters over the returned page.
-      if (search) {
-        const s = search.toLowerCase();
-        mapped = mapped.filter(
-          (u) =>
-            u.name.toLowerCase().includes(s) ||
-            u.email.toLowerCase().includes(s) ||
-            u.phone.includes(search) ||
-            u.shopName.toLowerCase().includes(s)
-        );
-      }
-      if (roleFilter !== 'all') {
-        mapped = mapped.filter((u) => u.role === roleFilter);
-      }
       setUsers(mapped);
       setTotal(data.total);
       setIsLoading(false);
