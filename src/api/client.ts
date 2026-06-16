@@ -84,13 +84,6 @@ class AdminApiClient {
     return this.request<{ status: string; _count: number }[]>('/api/admin/subscriptions');
   }
 
-  async updateSubscription(shopId: string, data: { tier: string; expiresAt?: string }) {
-    return this.request<any>(`/api/admin/subscriptions/${shopId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
   async updateShopStatus(shopId: string, status: 'active' | 'suspended') {
     return this.request<any>(`/api/admin/shops/${shopId}/status`, {
       method: 'PATCH',
