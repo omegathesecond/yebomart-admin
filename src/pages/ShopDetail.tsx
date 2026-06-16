@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
 import { StatusBadge } from '../components/Badge';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -15,7 +16,22 @@ import {
   AlertTriangle,
   Trash2,
   Calendar,
+  Package,
+  Receipt,
+  Users,
+  ChevronRight,
 } from 'lucide-react';
+
+interface StaffUser {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  role: string;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
 
 interface Shop {
   id: string;
@@ -24,7 +40,10 @@ interface Shop {
   ownerPhone: string;
   ownerEmail: string | null;
   address: string | null;
+  status: string;
   createdAt: string;
+  users?: StaffUser[];
+  _count?: { products: number; sales: number; users: number };
 }
 
 export default function ShopDetail() {
@@ -42,6 +61,9 @@ export default function ShopDetail() {
       const { data } = await adminApi.getShop(id!);
       if (data) {
         setShop(data);
+        // status arrives as the uppercase enum (ACTIVE | SUSPENDED); the local
+        // state + suspend toggle speak lowercase, same as Shops.tsx.
+        setStatus(String(data.status || 'active').toLowerCase() === 'suspended' ? 'suspended' : 'active');
       }
       setIsLoading(false);
     };
@@ -106,6 +128,27 @@ export default function ShopDetail() {
             <StatusBadge status={status} />
           </div>
         </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {[
+          { label: 'Products', value: shop._count?.products ?? 0, icon: Package },
+          { label: 'Sales', value: shop._count?.sales ?? 0, icon: Receipt },
+          { label: 'Staff', value: shop._count?.users ?? 0, icon: Users },
+        ].map(({ label, value, icon: Icon }) => (
+          <Card key={label}>
+            <CardContent className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Icon className="w-6 h-6 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{value.toLocaleString()}</p>
+                <p className="text-sm text-slate-400">{label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -193,6 +236,62 @@ export default function ShopDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Staff */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Users className="w-5 h-5 text-slate-400" />
+            Staff
+            <span className="text-sm font-normal text-slate-400">
+              ({shop.users?.length ?? 0})
+            </span>
+          </h2>
+        </CardHeader>
+        <CardContent className="p-0">
+          {shop.users && shop.users.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Login</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shop.users.map((member) => (
+                  <TableRow key={member.id} onClick={() => navigate(`/users/${member.id}`)}>
+                    <TableCell>
+                      <span className="font-medium text-white">{member.name}</span>
+                    </TableCell>
+                    <TableCell>{member.role}</TableCell>
+                    <TableCell>{member.phone}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={member.isActive ? 'active' : 'inactive'} />
+                    </TableCell>
+                    <TableCell>
+                      {member.lastLoginAt
+                        ? new Date(member.lastLoginAt).toLocaleDateString()
+                        : 'Never'}
+                    </TableCell>
+                    <TableCell>
+                      <ChevronRight className="w-5 h-5 text-slate-500" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="p-8 text-center">
+              <Users className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+              <p className="text-slate-400">No staff yet</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Suspend Modal */}
       <Modal
