@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
-import { TierBadge, StatusBadge } from '../components/Badge';
+import { StatusBadge } from '../components/Badge';
 import Pagination from '../components/Pagination';
 import ErrorState from '../components/ErrorState';
 import { Search, Store, ChevronRight } from 'lucide-react';
@@ -13,7 +13,6 @@ interface Shop {
   name: string;
   ownerName: string;
   phone: string;
-  tier: string;
   status: string;
   createdAt: string;
 }
@@ -30,7 +29,6 @@ export default function Shops() {
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
-  const [tierFilter, setTierFilter] = useState(searchParams.get('tier') || 'all');
 
   const page = parseInt(searchParams.get('page') || '1', 10);
 
@@ -55,31 +53,27 @@ export default function Shops() {
         name: shop.name,
         ownerName: shop.ownerName,
         phone: shop.ownerPhone || shop.phone,
-        tier: shop.tier || 'FREE',
         status: (shop.status || 'active').toLowerCase(),
         createdAt: shop.createdAt,
       }));
-      // Status/tier are client-side display filters over the returned page.
+      // Status is a client-side display filter over the returned page.
       if (statusFilter !== 'all') {
         mappedShops = mappedShops.filter((s) => s.status === statusFilter);
-      }
-      if (tierFilter !== 'all') {
-        mappedShops = mappedShops.filter((s) => s.tier.toLowerCase() === tierFilter.toLowerCase());
       }
       setShops(mappedShops);
       setTotal(data.total);
       setIsLoading(false);
     };
     fetchShops();
-  }, [page, search, statusFilter, tierFilter, reloadKey]);
+  }, [page, search, statusFilter, reloadKey]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
-    setSearchParams({ page: '1', search: value, status: statusFilter, tier: tierFilter });
+    setSearchParams({ page: '1', search: value, status: statusFilter });
   };
 
   const handlePageChange = (newPage: number) => {
-    setSearchParams({ page: String(newPage), search, status: statusFilter, tier: tierFilter });
+    setSearchParams({ page: String(newPage), search, status: statusFilter });
   };
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
@@ -115,7 +109,7 @@ export default function Shops() {
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
-                  setSearchParams({ page: '1', search, status: e.target.value, tier: tierFilter });
+                  setSearchParams({ page: '1', search, status: e.target.value });
                 }}
                 className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
@@ -123,21 +117,6 @@ export default function Shops() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="suspended">Suspended</option>
-              </select>
-              <select
-                value={tierFilter}
-                onChange={(e) => {
-                  setTierFilter(e.target.value);
-                  setSearchParams({ page: '1', search, status: statusFilter, tier: e.target.value });
-                }}
-                className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="all">All Tiers</option>
-                <option value="lite">Lite</option>
-                <option value="starter">Starter</option>
-                <option value="business">Business</option>
-                <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
               </select>
             </div>
           </div>
@@ -162,7 +141,6 @@ export default function Shops() {
                     <TableHead>Shop Name</TableHead>
                     <TableHead>Owner</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead>Tier</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead></TableHead>
@@ -181,7 +159,6 @@ export default function Shops() {
                       </TableCell>
                       <TableCell>{shop.ownerName}</TableCell>
                       <TableCell>{shop.phone}</TableCell>
-                      <TableCell><TierBadge tier={shop.tier} /></TableCell>
                       <TableCell><StatusBadge status={shop.status} /></TableCell>
                       <TableCell>{new Date(shop.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>

@@ -47,7 +47,6 @@ interface UserDetail {
       id: string;
       name: string;
       ownerName: string;
-      tier: string;
     };
   };
   stats: {
