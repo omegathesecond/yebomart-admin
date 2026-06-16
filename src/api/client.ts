@@ -1,6 +1,21 @@
 // YeboMart Admin API Client
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.yebomart.com';
 
+// Serialize list params into a query string, dropping empty values and the
+// "all" sentinel so we never send `?search=&role=all` (the server treats those
+// as no-filter, but omitting them keeps URLs clean and avoids edge cases).
+function buildQuery(params?: Record<string, string | number | undefined>): string {
+  if (!params) return '';
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === '') continue;
+    if (value === 'all') continue;
+    qs.set(key, String(value));
+  }
+  const str = qs.toString();
+  return str ? `?${str}` : '';
+}
+
 class AdminApiClient {
   private token: string | null = null;
 
@@ -59,8 +74,8 @@ class AdminApiClient {
   }
 
   // Shops
-  async getShops(params?: { page?: number; limit?: number; search?: string }) {
-    const query = params ? `?${new URLSearchParams(params as any)}` : '';
+  async getShops(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+    const query = buildQuery(params);
     return this.request<{ shops: any[]; total: number }>(`/api/admin/shops${query}`);
   }
 
@@ -69,8 +84,8 @@ class AdminApiClient {
   }
 
   // Users
-  async getUsers(params?: { page?: number; limit?: number }) {
-    const query = params ? `?${new URLSearchParams(params as any)}` : '';
+  async getUsers(params?: { page?: number; limit?: number; search?: string; role?: string }) {
+    const query = buildQuery(params);
     return this.request<{ users: any[]; total: number }>(`/api/admin/users${query}`);
   }
 
