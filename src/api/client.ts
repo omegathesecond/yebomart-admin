@@ -73,6 +73,38 @@ class AdminApiClient {
     return { error: result.error || 'Invalid login response' };
   }
 
+  // Profile (authenticated admin's own account — Settings page)
+  async getProfile() {
+    return this.request<{
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+    }>('/api/admin/profile');
+  }
+
+  async updateProfile(payload: { name?: string; email?: string }) {
+    return this.request<{
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+    }>('/api/admin/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async changePassword(payload: { currentPassword: string; newPassword: string }) {
+    return this.request<null>('/api/admin/change-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   // Shops
   async getShops(params?: { page?: number; limit?: number; search?: string; status?: string }) {
     const query = buildQuery(params);

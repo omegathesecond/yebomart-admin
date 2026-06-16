@@ -1,65 +1,132 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { adminApi } from '../api/client';
 import { Card, CardContent, CardHeader } from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import {
   User,
   Lock,
-  Bell,
   Shield,
-  Database,
+  Save,
+  Check,
   AlertTriangle,
 } from 'lucide-react';
 
+type Feedback = { type: 'success' | 'error'; text: string } | null;
+
+function FeedbackBanner({ feedback }: { feedback: Feedback }) {
+  if (!feedback) return null;
+  const isError = feedback.type === 'error';
+  return (
+    <div
+      className={`flex items-start gap-3 p-3 rounded-lg border ${
+        isError
+          ? 'border-red-500/30 bg-red-500/10 text-red-300'
+          : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+      }`}
+    >
+      {isError ? (
+        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+      ) : (
+        <Check className="w-5 h-5 shrink-0 mt-0.5" />
+      )}
+      <p className="text-sm">{feedback.text}</p>
+    </div>
+  );
+}
+
 export default function Settings() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'system'>('profile');
+  const { user, updateUser } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
 
   // Profile state
-  const [name, setName] = useState(user?.name || 'Admin User');
-  const [email, setEmail] = useState(user?.email || 'admin@yebomart.com');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileFeedback, setProfileFeedback] = useState<Feedback>(null);
 
   // Security state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordFeedback, setPasswordFeedback] = useState<Feedback>(null);
 
-  // Notification state
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [newShopAlerts, setNewShopAlerts] = useState(true);
-  const [weeklyReports, setWeeklyReports] = useState(false);
+  // Load the authoritative profile from the server on mount. If it fails we
+  // surface the error rather than silently showing stale cached values.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data, error } = await adminApi.getProfile();
+      if (!active) return;
+      if (error || !data) {
+        setProfileLoadError(error || 'Failed to load profile');
+      } else {
+        setName(data.name);
+        setEmail(data.email);
+        updateUser({ name: data.name, email: data.email, role: data.role });
+      }
+      setProfileLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+    // updateUser is stable for the provider's lifetime; run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // System state
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [allowRegistrations, setAllowRegistrations] = useState(true);
+  const handleSaveProfile = async () => {
+    setProfileFeedback(null);
+    setProfileSaving(true);
+    const { data, error } = await adminApi.updateProfile({ name, email });
+    setProfileSaving(false);
+    if (error || !data) {
+      setProfileFeedback({ type: 'error', text: error || 'Failed to save profile' });
+      return;
+    }
+    setName(data.name);
+    setEmail(data.email);
+    updateUser({ name: data.name, email: data.email, role: data.role });
+    setProfileFeedback({ type: 'success', text: 'Profile updated' });
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordFeedback(null);
+    setPasswordSaving(true);
+    const { error } = await adminApi.changePassword({ currentPassword, newPassword });
+    setPasswordSaving(false);
+    if (error) {
+      setPasswordFeedback({ type: 'error', text: error });
+      return;
+    }
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordFeedback({ type: 'success', text: 'Password changed' });
+  };
+
+  const passwordsMismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'security', label: 'Security', icon: Shield },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'system', label: 'System', icon: Database },
-  ];
+  ] as const;
+
+  const initials = (name || email || '?')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-slate-400">Manage your account and system settings</p>
-      </div>
-
-      {/* These controls are a preview of planned settings. There is no admin
-          settings/profile API yet, so nothing here is persisted — the Save
-          buttons are disabled to avoid presenting a fake success. */}
-      <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10">
-        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-        <div>
-          <p className="font-medium text-amber-400">Not yet connected to the backend</p>
-          <p className="text-sm text-amber-200/80">
-            These settings are a preview. Changes made here are not saved — there is
-            no admin settings API yet.
-          </p>
-        </div>
+        <p className="text-slate-400">Manage your admin account</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
@@ -70,7 +137,7 @@ export default function Settings() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'bg-amber-500/10 text-amber-500'
@@ -96,31 +163,45 @@ export default function Settings() {
                 </h2>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-4 pb-4 border-b border-slate-700">
-                  <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">
-                      {name.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">{name}</p>
-                    <p className="text-sm text-slate-400">{email}</p>
-                  </div>
-                </div>
-                <Input
-                  label="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <Input
-                  label="Email Address"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <div className="pt-4">
-                  <Button disabled>Save Changes</Button>
-                </div>
+                {profileLoadError ? (
+                  <FeedbackBanner feedback={{ type: 'error', text: profileLoadError }} />
+                ) : profileLoading ? (
+                  <p className="text-sm text-slate-400">Loading profile…</p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-4 pb-4 border-b border-slate-700">
+                      <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center">
+                        <span className="text-2xl font-bold text-white">{initials}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-white">{name}</p>
+                        <p className="text-sm text-slate-400">{email}</p>
+                      </div>
+                    </div>
+                    <Input
+                      label="Full Name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                    <Input
+                      label="Email Address"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                    <FeedbackBanner feedback={profileFeedback} />
+                    <div className="pt-2">
+                      <Button
+                        onClick={handleSaveProfile}
+                        isLoading={profileSaving}
+                        disabled={!name.trim() || !email.trim()}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
@@ -151,6 +232,7 @@ export default function Settings() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
+                  error={newPassword.length > 0 && newPassword.length < 8 ? 'Must be at least 8 characters' : undefined}
                 />
                 <Input
                   label="Confirm New Password"
@@ -158,109 +240,22 @@ export default function Settings() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  error={confirmPassword && confirmPassword !== newPassword ? 'Passwords do not match' : undefined}
+                  error={passwordsMismatch ? 'Passwords do not match' : undefined}
                 />
-                <div className="pt-4">
-                  <Button disabled>
+                <FeedbackBanner feedback={passwordFeedback} />
+                <div className="pt-2">
+                  <Button
+                    onClick={handleChangePassword}
+                    isLoading={passwordSaving}
+                    disabled={
+                      !currentPassword ||
+                      newPassword.length < 8 ||
+                      newPassword !== confirmPassword
+                    }
+                  >
                     <Lock className="w-4 h-4 mr-2" />
                     Update Password
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === 'notifications' && (
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-slate-400" />
-                  Notification Settings
-                </h2>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <label className="flex items-center justify-between p-3 rounded-lg bg-slate-700/50">
-                    <div>
-                      <p className="font-medium text-white">Email Notifications</p>
-                      <p className="text-sm text-slate-400">Receive notifications via email</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={emailNotifications}
-                      onChange={(e) => setEmailNotifications(e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-500 bg-slate-700 text-amber-500 focus:ring-amber-500"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-3 rounded-lg bg-slate-700/50">
-                    <div>
-                      <p className="font-medium text-white">New Shop Alerts</p>
-                      <p className="text-sm text-slate-400">Get notified when a new shop registers</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={newShopAlerts}
-                      onChange={(e) => setNewShopAlerts(e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-500 bg-slate-700 text-amber-500 focus:ring-amber-500"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-3 rounded-lg bg-slate-700/50">
-                    <div>
-                      <p className="font-medium text-white">Weekly Reports</p>
-                      <p className="text-sm text-slate-400">Receive weekly summary reports</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={weeklyReports}
-                      onChange={(e) => setWeeklyReports(e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-500 bg-slate-700 text-amber-500 focus:ring-amber-500"
-                    />
-                  </label>
-                </div>
-                <div className="pt-4">
-                  <Button disabled>Save Preferences</Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === 'system' && (
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Database className="w-5 h-5 text-slate-400" />
-                  System Settings
-                </h2>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  <label className="flex items-center justify-between p-3 rounded-lg bg-slate-700/50">
-                    <div>
-                      <p className="font-medium text-white">Maintenance Mode</p>
-                      <p className="text-sm text-slate-400">Disable access for non-admin users</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={maintenanceMode}
-                      onChange={(e) => setMaintenanceMode(e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-500 bg-slate-700 text-amber-500 focus:ring-amber-500"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-3 rounded-lg bg-slate-700/50">
-                    <div>
-                      <p className="font-medium text-white">Allow New Registrations</p>
-                      <p className="text-sm text-slate-400">Allow new shops to register</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={allowRegistrations}
-                      onChange={(e) => setAllowRegistrations(e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-500 bg-slate-700 text-amber-500 focus:ring-amber-500"
-                    />
-                  </label>
-                </div>
-                <div className="pt-4">
-                  <Button disabled>Save Settings</Button>
                 </div>
               </CardContent>
             </Card>
