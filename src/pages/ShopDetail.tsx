@@ -55,6 +55,8 @@ export default function ShopDetail() {
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [suspendError, setSuspendError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchShop = async () => {
@@ -72,23 +74,34 @@ export default function ShopDetail() {
 
   const handleSuspend = async () => {
     setActionLoading(true);
+    setSuspendError(null);
     const newStatus = status === 'suspended' ? 'active' : 'suspended';
     const { error } = await adminApi.updateShopStatus(id!, newStatus);
-    if (!error) {
-      setStatus(newStatus);
-    }
     setActionLoading(false);
+    // On failure, surface the real message and keep the modal open — never
+    // close as if the action succeeded.
+    if (error) {
+      setSuspendError(error);
+      return;
+    }
+    setStatus(newStatus);
     setSuspendModalOpen(false);
   };
 
   const handleDelete = async () => {
     setActionLoading(true);
+    setDeleteError(null);
     const { error } = await adminApi.deleteShop(id!);
     setActionLoading(false);
-    if (!error) {
-      navigate('/shops');
+    // The only success signal for delete is the navigate away; on failure we
+    // must keep the modal open with the error so the admin doesn't assume the
+    // destructive action worked.
+    if (error) {
+      setDeleteError(error);
+      return;
     }
     setDeleteModalOpen(false);
+    navigate('/shops');
   };
 
   if (isLoading) {
@@ -217,7 +230,10 @@ export default function ShopDetail() {
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
-                onClick={() => setSuspendModalOpen(true)}
+                onClick={() => {
+                  setSuspendError(null);
+                  setSuspendModalOpen(true);
+                }}
                 className="w-full"
                 variant="secondary"
               >
@@ -225,7 +241,10 @@ export default function ShopDetail() {
                 {status === 'suspended' ? 'Reactivate' : 'Suspend'}
               </Button>
               <Button
-                onClick={() => setDeleteModalOpen(true)}
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteModalOpen(true);
+                }}
                 className="w-full"
                 variant="danger"
               >
@@ -296,7 +315,10 @@ export default function ShopDetail() {
       {/* Suspend Modal */}
       <Modal
         isOpen={suspendModalOpen}
-        onClose={() => setSuspendModalOpen(false)}
+        onClose={() => {
+          setSuspendModalOpen(false);
+          setSuspendError(null);
+        }}
         title={status === 'suspended' ? 'Reactivate Shop' : 'Suspend Shop'}
       >
         <div className="space-y-4">
@@ -305,8 +327,20 @@ export default function ShopDetail() {
               ? 'Are you sure you want to reactivate this shop? The owner will regain access immediately.'
               : 'Are you sure you want to suspend this shop? The owner will lose access until reactivated.'}
           </p>
+          {suspendError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-red-400">{suspendError}</p>
+            </div>
+          )}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setSuspendModalOpen(false)} className="flex-1">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSuspendModalOpen(false);
+                setSuspendError(null);
+              }}
+              className="flex-1"
+            >
               Cancel
             </Button>
             <Button
@@ -324,7 +358,10 @@ export default function ShopDetail() {
       {/* Delete Modal */}
       <Modal
         isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setDeleteError(null);
+        }}
         title="Delete Shop"
       >
         <div className="space-y-4">
@@ -334,8 +371,20 @@ export default function ShopDetail() {
               Deleting this shop will permanently remove all associated data including products, sales, and user accounts.
             </p>
           </div>
+          {deleteError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-red-400">Failed to delete shop: {deleteError}</p>
+            </div>
+          )}
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => setDeleteModalOpen(false)} className="flex-1">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setDeleteModalOpen(false);
+                setDeleteError(null);
+              }}
+              className="flex-1"
+            >
               Cancel
             </Button>
             <Button variant="danger" onClick={handleDelete} isLoading={actionLoading} className="flex-1">
