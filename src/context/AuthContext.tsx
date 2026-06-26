@@ -24,6 +24,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // When any authenticated request gets a 401 (expired/invalid 24h admin
+    // JWT), the API client invokes this to drop the stale session. Clearing
+    // `user` flips isAuthenticated to false, so ProtectedRoute redirects to
+    // /login instead of leaving the user "logged in" on perpetually-erroring
+    // pages. (The token itself is already cleared by the client.)
+    adminApi.setUnauthorizedHandler(() => {
+      localStorage.removeItem('yebomart_admin_user');
+      setUser(null);
+    });
+
     // Check for existing token on mount
     const token = adminApi.getToken();
     if (token) {
