@@ -18,6 +18,16 @@ function buildQuery(params?: Record<string, string | number | undefined>): strin
 
 class AdminApiClient {
   private token: string | null = null;
+  private onUnauthorized: (() => void) | null = null;
+
+  // Register a handler invoked when an *authenticated* request comes back 401
+  // (expired/invalid 24h admin JWT). AuthContext wires this to logout so the
+  // app tears down the stale session and redirects to /login, instead of
+  // silently showing "Request failed" on every page while still appearing
+  // logged in.
+  setUnauthorizedHandler(handler: () => void) {
+    this.onUnauthorized = handler;
+  }
 
   setToken(token: string) {
     this.token = token;
@@ -46,6 +56,16 @@ class AdminApiClient {
 
     try {
       const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+      // A 401 on a request that carried a token means the session expired or
+      // was revoked. Clear it and notify the app so it redirects to /login —
+      // otherwise the user stays "logged in" while every page errors out.
+      // (Guarded on `token` so a failed login, which 401s without a token,
+      // surfaces its own error message instead of being treated as expiry.)
+      if (response.status === 401 && token) {
+        this.clearToken();
+        this.onUnauthorized?.();
+        return { error: 'Session expired. Please log in again.' };
+      }
       const json = await response.json();
       if (!response.ok) return { error: json.message || 'Request failed' };
       // API wraps responses in { success, data }
