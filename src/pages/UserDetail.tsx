@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
+import ErrorState from '../components/ErrorState';
 import { Card, CardContent, CardHeader } from '../components/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/Table';
 import Badge from '../components/Badge';
@@ -82,20 +83,35 @@ export default function UserDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState<UserDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Distinguish a genuine 404 (this user really doesn't exist) from a transient
+  // fetch/server failure (network, 5xx, expired token). Only the latter gets the
+  // loud, retryable ErrorState; a 404 keeps the "User not found" empty state.
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [period, setPeriod] = useState(30);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
       setIsLoading(true);
-      const { data: result } = await adminApi.getUserDetail(id, period);
+      setError(null);
+      const { data: result, error: apiError, status } = await adminApi.getUserDetail(id, period);
       if (result) {
         setData(result);
+      } else if (status === 404) {
+        // The user truly doesn't exist — fall through to the "User not found"
+        // empty state below (data stays null, error stays null). No retry.
+        setData(null);
+      } else {
+        // Network error, 5xx, expired token, or an unexpected empty body — never
+        // mask these as "user not found". Surface them loudly with a retry.
+        setData(null);
+        setError(apiError || 'No data returned from the server.');
       }
       setIsLoading(false);
     };
     fetchData();
-  }, [id, period]);
+  }, [id, period, reloadKey]);
 
   const formatCurrency = (amount: number) => {
     return `E${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -147,6 +163,24 @@ export default function UserDetail() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Transient failure (network/5xx/expired token) — loud, retryable. Distinct
+  // from the 404 "not found" state below so an outage is never misreported as a
+  // deleted user.
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => navigate('/users')}
+          className="flex items-center gap-1 text-amber-500 hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Users
+        </button>
+        <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
       </div>
     );
   }

@@ -46,7 +46,7 @@ class AdminApiClient {
     localStorage.removeItem('yebomart_admin_token');
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<{ data?: T; error?: string }> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<{ data?: T; error?: string; status?: number }> {
     const token = this.getToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -64,13 +64,18 @@ class AdminApiClient {
       if (response.status === 401 && token) {
         this.clearToken();
         this.onUnauthorized?.();
-        return { error: 'Session expired. Please log in again.' };
+        return { error: 'Session expired. Please log in again.', status: 401 };
       }
       const json = await response.json();
-      if (!response.ok) return { error: json.message || 'Request failed' };
+      // Surface the HTTP status alongside the result so callers can tell a
+      // genuine 404 (resource truly absent) apart from a transient 5xx/network
+      // failure — a detail page wants "not found" for the former but a loud,
+      // retryable error state for the latter.
+      if (!response.ok) return { error: json.message || 'Request failed', status: response.status };
       // API wraps responses in { success, data }
-      return { data: json.data };
+      return { data: json.data, status: response.status };
     } catch {
+      // Network/parse failure — there is no HTTP status to report.
       return { error: 'Network error' };
     }
   }
